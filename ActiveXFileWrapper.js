@@ -184,5 +184,5 @@ Directory.prototype = {
 					.GetFolder(this.Path)
 					.Size
 	} ,
-	this.toString : function(){ return "[object Directory]"}
+	toString : function(){ return "[object Directory]"}
 } 
