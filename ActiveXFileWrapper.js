@@ -3,7 +3,7 @@ File = function(path){
 }
 
 File.prototype = {
-	exists = function(){
+	exists : function(){
 		if(!new ActiveXObject("Scripting.FileSystemObject").FileExists(this.Path)){
 			return true
 		}
@@ -184,5 +184,5 @@ Directory.prototype = {
 					.GetFolder(this.Path)
 					.Size
 	} ,
-	this.toString = function(){ return "[object Directory]"}
+	this.toString : function(){ return "[object Directory]"}
 } 
