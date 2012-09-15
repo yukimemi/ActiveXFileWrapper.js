@@ -64,20 +64,37 @@ File.prototype = {
 	} ,
 	setBaseName : function(str){
 		return new ActiveXObject("Scripting.FileSystemObject")
-					.GetFile( this.path )
+					.GetFile( this.Path )
 					.Name = str + "." + (new ActiveXObject("Scripting.FileSystemObject").GetExtensionName(this.path))
 	} ,
 	getExtensionName : function(){
 		return new ActiveXObject("Scripting.FileSystemObject")
 					.GetExtensionName(this.Path) ;
 	} ,
+	setExtensionName : function(str){
+		return new ActiveXObject("Scripting.FileSystemObject")
+					.GetFile( this.Path )
+					.Name = (new ActiveXObject("Scripting.FileSystemObject").GetBaseName(this.Path)) + "." + str ;
+	} ,
+	getName : function(){
+		return new ActiveXObject("Scripting.FileSystemObject").GetFile(this.Path).Name ;
+	} ,
+	setName : function(str){
+		new ActiveXObject("Scripting.FileSystemObject").GetFile(this.Path).Name = str ;
+	} ,
 	getParentDirectory : function(){
 		return Directory( new ActiveXObject("Scripting.FileSystemObject").GetFile(this.Path).ParentFolder )
 	} ,
-	read : function(){
-		return new ActiveXObject("Scripting.FileSystemObject")
-					.OpenTextFile(this.Path)
-					.ReadAll()
+	read : function(encode){
+		var adodb = new ActiveXObject("ADODB.Stream") ;
+		adodb.Charset = encode ;
+		if(!encode) adodb.Charset = "Shift_JIS" ;
+		adodb.Open()
+		adodb.LoadFromFile( this.path ) ;
+		var text = adodb.ReadAll() ;
+		adodb.Close() ;
+		return text
+		
 	} ,
 	write : function(str){
 		var stream =  new ActiveXObject("Scripting.FileSystemObject").OpenTextFile(this.Path)
@@ -86,13 +103,15 @@ File.prototype = {
 		return str ;
 	}
 }
-Directory = function(path){
+var Directory = function(path){
 	this.Path = path ;
+	this.checking() ;
+	this.isroot = new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).IsRootFolder;
 }
 Directory.prototype = {
 	checking : function(){
 		if(!new ActiveXObject("Scripting.FileSystemObject").FolderExists(this.Path)){
-			throw new API.Exception.UnknownDirectoryException(this.Path) ;
+			throw new Exception.UnknownDirectoryException(this.Path) ;
 		}
 	} ,
 	getSubDirectories : function(){
@@ -104,7 +123,7 @@ Directory.prototype = {
 				.SubFolders
 		) ;
 		for( ; !folders.atEnd() ; folders.moveNext() ){
-			ret.push(new File(folders.item().Name)) ;
+			ret.push(new Directory( new ActiveXObject("Scripting.FileSystemObject").GetParentFolderName(folders.item()) + folders.item().Name)) ;
 		}
 		
 		return ret ;
@@ -118,12 +137,21 @@ Directory.prototype = {
 				.files
 		)
 		for( ; !files.atEnd() ; files.moveNext() ){
-			ret.push(new Directory(files.item().Name) ) ;
+			ret.push(new File(new ActiveXObject("Scripting.FileSystemObject").GetParentFolderName(files.item()) + files.item().Name) ) ;
 		}
 		return ret ;
 	} ,	
 	getParentDirectory : function(){
 		return Directory( new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).ParentFolder )
+	} ,
+	
+	getName : function(){
+		this.checking() ;
+		if(this.isroot) return "ルートフォルダ" ;
+		return new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).Name
+	} ,
+	setName : function(str){
+		new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).Name = str ;
 	} ,
 	copyTo : function( destination , overwrite){
 		if(!overwrite) overwite = false ;
