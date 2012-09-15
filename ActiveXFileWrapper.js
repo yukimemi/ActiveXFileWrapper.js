@@ -1,129 +1,110 @@
 File = function(path){
-			this.Path = path ;
+	this.Path = path ;
+	this.fso = new ActiveXObject("Scripting.FileSystemObject")
+	this.file = this.fso.GetFile(this.Path) ;
 }
 
 File.prototype = {
 	exists : function(){
-		if(!new ActiveXObject("Scripting.FileSystemObject").FileExists(this.Path)){
+		if(!this.fso.FileExists(this.Path)){
 			return true
 		}
 		return false
 	} ,
 	CopyTo : function(destination , overwrite){
 		if(!overwrite) overwrite = false ; 
-		new ActiveXObject("Scripting.FileSystemObject")
-			.GetFile(this.Path)
-			.Copy(destination , overwrite)
+		this.file.Copy(destination , overwrite)
 	} ,
 
 	Delete : function(force){
 		if(!force) force = false ;
-		new ActiveXObject("Scripting.FileSystemObject")
-			.GetFile(this.Path)
-			.Delete() ;
+		this.file.Delete() ;
 	} ,
 
 	Move : function(destination){
-		new ActiveXObject("Scripting.FileSystemObject")
-			.GetFile(this.Path)
-			.Move(destination)
+		this.file.Move(destination)
 	} ,
 
 	getLastAccessed : function(){
-		var date = new ActiveXObject("Scripting.FileSystemObject")
-			.GetFile(this.Path)
-			.DataLastAccessed
+		var date = this.file.DataLastAccessed
 		
 		if(!date) return null ;
 		return new Date(date) ;
 	} ,
 	
 	getCreatedDate : function(){
-		var date = new ActiveXObject("Scripting.FileSystemObject")
-			.GetFile(this.Path)
-			.DateCreated
+		var date = this.file.DateCreated
 		if(!date) return null ;
 		return new Date(date) ;
 	} ,
 	getLastModified : function(){
-		var date = new ActiveXObject("Scripting.FileSystemObject")
-			.GetFile(this.Path)
-			.DateLastModified
-		
-		
+		var date = this.file.DateLastModified
 		return new Date(date) ;
 	} ,
 	getSize : function(){
-		return new ActiveXObject("Scripting.FileSystemObject")
-					.GetFile(this.Path)
-					.Size
+		return this.file.Size
 	} ,
 	getBaseName : function(){
-		return new ActiveXObject("Scripting.FileSystemObject")
-					.GetBaseName(this.Path)
+		return this.fso.GetBaseName(this.Path)
 	} ,
 	setBaseName : function(str){
-		return new ActiveXObject("Scripting.FileSystemObject")
-					.GetFile( this.Path )
-					.Name = str + "." + (new ActiveXObject("Scripting.FileSystemObject").GetExtensionName(this.path))
+		this.file.Name = str + "." + (this.fso.GetExtensionName(this.path))
 	} ,
 	getExtensionName : function(){
-		return new ActiveXObject("Scripting.FileSystemObject")
-					.GetExtensionName(this.Path) ;
+		return fso.GetExtensionName(this.Path) ;
 	} ,
 	setExtensionName : function(str){
-		return new ActiveXObject("Scripting.FileSystemObject")
-					.GetFile( this.Path )
-					.Name = (new ActiveXObject("Scripting.FileSystemObject").GetBaseName(this.Path)) + "." + str ;
+		return this.file.Name = (this.fso.GetBaseName(this.Path)) + "." + str ;
 	} ,
 	getName : function(){
-		return new ActiveXObject("Scripting.FileSystemObject").GetFile(this.Path).Name ;
+		return this.file.Name ;
 	} ,
 	setName : function(str){
-		new ActiveXObject("Scripting.FileSystemObject").GetFile(this.Path).Name = str ;
+		new this.file.Name = str ;
 	} ,
 	getParentDirectory : function(){
-		return Directory( new ActiveXObject("Scripting.FileSystemObject").GetFile(this.Path).ParentFolder )
+		return Directory( this.file.ParentFolder )
 	} ,
 	read : function(encode){
 		var adodb = new ActiveXObject("ADODB.Stream") ;
 		adodb.Charset = encode ;
 		if(!encode) adodb.Charset = "Shift_JIS" ;
 		adodb.Open()
-		adodb.LoadFromFile( this.path ) ;
-		var text = adodb.ReadAll() ;
+		adodb.LoadFromFile( this.Path ) ;
+		var text = adodb.ReadText() ;
 		adodb.Close() ;
 		return text
 		
 	} ,
 	write : function(str){
-		var stream =  new ActiveXObject("Scripting.FileSystemObject").OpenTextFile(this.Path)
+		var stream =  this.fso.OpenTextFile(this.Path)
 		var str = stream.Write(str) ;
 		stream.Close() ;
 		return str ;
 	}
 }
 var Directory = function(path){
+	if(path.substring( path.length -1 , path.length) != "\\")
+		path += "\\"
+
 	this.Path = path ;
+	this.fso = new ActiveXObject("Scripting.FileSystemObject") ;
 	this.checking() ;
-	this.isroot = new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).IsRootFolder;
+	this.dir = this.fso.GetFolder( this.Path ) ;
+	this.isroot = this.dir.IsRootFolder;
 }
 Directory.prototype = {
 	checking : function(){
-		if(!new ActiveXObject("Scripting.FileSystemObject").FolderExists(this.Path)){
+		if(!this.fso.FolderExists(this.Path)){
 			throw new Exception.UnknownDirectoryException(this.Path) ;
 		}
 	} ,
 	getSubDirectories : function(){
-		this.checking() ;
 		var ret = [] ;
-		var folders = new Enumerator(
-			new ActiveXObject("Scripting.FileSystemObject")
-				.GetFolder( this.Path )
-				.SubFolders
-		) ;
+		var folders = new Enumerator(this.dir.SubFolders) ;
+		
 		for( ; !folders.atEnd() ; folders.moveNext() ){
-			ret.push(new Directory( new ActiveXObject("Scripting.FileSystemObject").GetParentFolderName(folders.item()) + folders.item().Name)) ;
+			ret.push(new Directory( this.getFullName() + folders.item().Name)) ;
 		}
 		
 		return ret ;
@@ -131,43 +112,39 @@ Directory.prototype = {
 	getSubFiles : function(){
 		this.checking() ;
 		var ret = [] ;
-		var files = new Enumerator(
-			new ActiveXObject("Scripting.FileSystemObject")
-				.GetFolder(this.Path)
-				.files
-		)
+		var files = new Enumerator(this.dir.files)
+		
 		for( ; !files.atEnd() ; files.moveNext() ){
-			ret.push(new File(new ActiveXObject("Scripting.FileSystemObject").GetParentFolderName(files.item()) + files.item().Name) ) ;
+			ret.push(new File(this.getFullName() + files.item().Name) ) ;
 		}
+		
 		return ret ;
 	} ,	
 	getParentDirectory : function(){
-		return Directory( new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).ParentFolder )
+		return Directory( this.dir.ParentFolder )
 	} ,
 	
 	getName : function(){
-		this.checking() ;
-		if(this.isroot) return "ルートフォルダ" ;
-		return new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).Name
+		return this.dir.Name
 	} ,
 	setName : function(str){
-		new ActiveXObject("Scripting.FileSystemObject").GetFolder(this.Path).Name = str ;
+		this.dir.Name = str ;
+	} ,
+	getFullName : function(){
+		var str =  this.dir + ""
+		if(str.substring( str.length -1 , str.length) != "\\")
+			str += "\\"
+		return str ;
 	} ,
 	copyTo : function( destination , overwrite){
 		if(!overwrite) overwite = false ;
-		new ActiveXObject("Scripting.FileSystemObject")
-			.GetFolder(this.Path)
-			.Copy(destination , overwrite) ;
+		this.dir.Copy(destination , overwrite) ;
 	} ,
 	Delete : function(){
-		new ActiveXObject("Scripting.FileSystemObject")
-				.GetFolder(this.Path)
-				.Delete() ;
+		this.dir.Delete() ;
 	} ,
 	Move : function(destination){
-		new ActiveXObject("Scripting.FileSystemObject")
-				.GetFolder(this.Path)
-				.Move(destination) ;
+		this.dir.Move(destination) ;
 	} ,
 	CreateFile : function(fileName , overwrite , encoding){
 		if(!overwrite) overwrite = false ;
@@ -175,42 +152,31 @@ Directory.prototype = {
 		else if(encoding == "Shift_JIS") encoding = false ;
 		else encoding = false ;
 		
-		new ActiveXObject("Scripting.FileSystemObject")
-			.GetFolder(this.Path)
-			.CreateTextFile(fileName , overwrite , encoding) ;
+		this.dir.CreateTextFile(fileName , overwrite , encoding) ;
+		
 	} ,
 	CreateDirectory : function(folderName){
-		new ActiveXObject("Scripting.FileSystemObject").CreateFolder(
-			this.Path + "\\" + folderName
-		) ;
+		this.fso.CreateFolder(this.getFullName() + folderName) ;
 	} ,
 	getLastAccessed : function(){
-		var date = new ActiveXObject("Scripting.FileSystemObject")
-			.GetFolder(this.Path)
-			.DataLastAccessed
+		var date = this.dir.DataLastAccessed
 		
 		if(!date) return null ;
 		return new Date(date) ;
 	} ,
 	getCreatedDate : function(){
-		var date = new ActiveXObject("Scripting.FileSystemObject")
-			.GetFolder(this.Path)
-			.DateCreated
+		var date = this.dir.DateCreated
 		
 		if(!date) return null ;
 		return new Date(date) ;
 	} ,	
 	getLastModified : function(){
-		var date = new ActiveXObject("Scripting.FileSystemObject").
-			GetFolder(this.Path)
-			.DateLastModified
+		var date = this.dir.DateLastModified
 		
 		return new Date(date) ;
 	} ,
 	getSize : function(){
-		return new ActiveXObject("Scripting.FileSystemObject")
-					.GetFolder(this.Path)
-					.Size
+		return this.dir.Size
 	} ,
 	toString : function(){ return "[object Directory]"}
 } 
