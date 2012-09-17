@@ -1,15 +1,16 @@
-File = function(path){
+"use strict"
+var File = function(path){
 	this.Path = path ;
-	this.fso = new ActiveXObject("Scripting.FileSystemObject")
+	this.fso = new ActiveXObject("Scripting.FileSystemObject") ;
 	this.file = this.fso.GetFile(this.Path) ;
-}
+} ;
 
 File.prototype = {
 	exists : function(){
 		if(!this.fso.FileExists(this.Path)){
-			return true
+			return false;
 		}
-		return false
+		return true ;
 	} ,
 	CopyTo : function(destination , overwrite){
 		if(!overwrite) overwrite = false ; 
@@ -51,7 +52,7 @@ File.prototype = {
 		this.file.Name = str + "." + (this.fso.GetExtensionName(this.path))
 	} ,
 	getExtensionName : function(){
-		return fso.GetExtensionName(this.Path) ;
+		return this.fso.GetExtensionName(this.Path) ;
 	} ,
 	setExtensionName : function(str){
 		return this.file.Name = (this.fso.GetBaseName(this.Path)) + "." + str ;
@@ -59,29 +60,43 @@ File.prototype = {
 	getName : function(){
 		return this.file.Name ;
 	} ,
+	getFullName : function(){
+		return this.file.Path + "" ;
+	} ,
 	setName : function(str){
 		new this.file.Name = str ;
 	} ,
 	getParentDirectory : function(){
-		return Directory( this.file.ParentFolder )
+		return new Directory( this.file.ParentFolder.Path )
 	} ,
 	read : function(encode){
 		var adodb = new ActiveXObject("ADODB.Stream") ;
-		adodb.Charset = encode ;
-		if(!encode) adodb.Charset = "Shift_JIS" ;
-		adodb.Open()
-		adodb.LoadFromFile( this.Path ) ;
-		var text = adodb.ReadText() ;
-		adodb.Close() ;
-		return text
 		
+		if(encode)adodb.charset = encode ;
+		if(!encode) adodb.charset = "UTF-8" ;
+		adodb.open()
+		adodb.loadFromFile( this.Path ) ;
+		var retarray = new Array() ;
+		while(!adodb.EOS){
+			retarray[retarray.length] = adodb.ReadText(-2) + "\n"
+		}
+		adodb.close() ;
+		return retarray.join("") ;		
 	} ,
-	write : function(str){
-		var stream =  this.fso.OpenTextFile(this.Path)
-		var str = stream.Write(str) ;
-		stream.Close() ;
-		return str ;
-	}
+	write : function(str , encode){
+		if(!this.exists()){
+			this.getParentDirectory().CreateFile(this.getName()) ;
+		}
+		var adodb = new ActiveXObject("ADODB.Stream")
+		if(encode) adodb.charset = encode ;
+		else adodb.charset = "UTF-8"
+		adodb.open()
+		adodb.Type = 2 ;
+		adodb.WriteText( str ) ;
+		adodb.SaveToFile(this.Path , 2) ;
+		adodb.close() ;
+	} ,
+	toString : function(){ return this.getFullName() }
 }
 var Directory = function(path){
 	if(path.substring( path.length -1 , path.length) != "\\")
@@ -89,33 +104,34 @@ var Directory = function(path){
 
 	this.Path = path ;
 	this.fso = new ActiveXObject("Scripting.FileSystemObject") ;
-	this.checking() ;
+	this.exists() ;
 	this.dir = this.fso.GetFolder( this.Path ) ;
 	this.isroot = this.dir.IsRootFolder;
 }
 Directory.prototype = {
-	checking : function(){
+	exists : function(){
 		if(!this.fso.FolderExists(this.Path)){
-			throw new Exception.UnknownDirectoryException(this.Path) ;
+			return false
 		}
+		return true ;
 	} ,
 	getSubDirectories : function(){
-		var ret = [] ;
+		var ret = new Array() ;
 		var folders = new Enumerator(this.dir.SubFolders) ;
 		
 		for( ; !folders.atEnd() ; folders.moveNext() ){
-			ret.push(new Directory( this.getFullName() + folders.item().Name)) ;
+			ret[ret.length] = new Directory( this.getFullName() + folders.item().Name) ;
 		}
 		
 		return ret ;
 	} ,	
 	getSubFiles : function(){
-		this.checking() ;
-		var ret = [] ;
+		this.exists() ;
+		var ret = new Array ;
 		var files = new Enumerator(this.dir.files)
 		
 		for( ; !files.atEnd() ; files.moveNext() ){
-			ret.push(new File(this.getFullName() + files.item().Name) ) ;
+			ret[ret.length] = new File(this.getFullName() + files.item().Name)  ;
 		}
 		
 		return ret ;
@@ -131,7 +147,7 @@ Directory.prototype = {
 		this.dir.Name = str ;
 	} ,
 	getFullName : function(){
-		var str =  this.dir + ""
+		var str =  this.dir.Path + ""
 		if(str.substring( str.length -1 , str.length) != "\\")
 			str += "\\"
 		return str ;
@@ -153,6 +169,8 @@ Directory.prototype = {
 		else encoding = false ;
 		
 		this.dir.CreateTextFile(fileName , overwrite , encoding) ;
+		
+		return new File(this.getFullName() + fileName) ;
 		
 	} ,
 	CreateDirectory : function(folderName){
@@ -178,5 +196,5 @@ Directory.prototype = {
 	getSize : function(){
 		return this.dir.Size
 	} ,
-	toString : function(){ return "[object Directory]"}
+	toString : function(){ return this.getFullName() }
 } 
