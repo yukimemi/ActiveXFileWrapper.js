@@ -65,7 +65,9 @@ class Core
 
   # Constructor# {{{
   constructor: (@path = path) -># {{{
-    super()
+    @thisPath = @fso.GetParentFolderName WScript.ScriptFullName
+    @thisName = WScript.ScriptName
+    @thisBaseName = @fso.GetBaseName @thisName
     if @fso.FileExists @path
       @file = @fso.GetFile @path
     else
