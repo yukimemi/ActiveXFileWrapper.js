@@ -1,7 +1,7 @@
 class Core
 
   # Member
-  debug: false
+  debug: true
 
   fso: new ActiveXObject "Scripting.FileSystemObject"
 
@@ -70,7 +70,7 @@ class Core
     @thisBaseName = @fso.GetBaseName @thisName
     if @fso.FileExists @path
       @file = @fso.GetFile @path
-    else
+    else if @fso.FolderExists @path
       @dir = @fso.GetFolder @path
       @isroot = @dir.IsRootFolder# }}}
 # }}}
