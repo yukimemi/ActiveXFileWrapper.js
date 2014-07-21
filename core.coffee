@@ -45,22 +45,6 @@ class Core
     else if not @isDirectory dst
       @fso.MoveFolder src, dst# }}}
 
-  @walk: (path, filter) -># {{{
-    @dp "path = [#{path}]"
-    ret = []
-    do f = (path) =>
-      dir = @fso.GetFolder path
-      # directories
-      e = new Enumerator dir.SubFolders
-      until e.atEnd()
-        f new String e.item()
-        e.moveNext()
-      # files
-      e = new Enumerator dir.Files
-      until e.atEnd()
-        ret.push new String e.item()
-        e.moveNext()
-    return ret# }}}
 # }}}
 
   # Constructor# {{{
@@ -81,6 +65,32 @@ class Core
 
   dp: (msg) -># {{{
     WScript.Echo msg if @debug# }}}
+
+  dpObject: (obj) ->
+    i = 0
+    do f = (obj, i) =>
+      @dp "{"
+      for o of obj
+        f obj[o], i++ if typeof obj[o] is "object"
+        @p "#{o}: #{obj[o]}"
+      @dp "}"
+
+  walk: (path, filter) -># {{{
+    @dp "path = [#{path}]"
+    ret = []
+    do f = (path) =>
+      dir = @fso.GetFolder path
+      # directories
+      e = new Enumerator dir.SubFolders
+      until e.atEnd()
+        f new String e.item()
+        e.moveNext()
+      # files
+      e = new Enumerator dir.Files
+      until e.atEnd()
+        ret.push new String e.item()
+        e.moveNext()
+    return ret# }}}
 
   filterArray: (array, filter) -># {{{
     @dp "filter = [#{filter}]"
@@ -260,3 +270,4 @@ class Core
   getSize: -># {{{
     @dir.Size# }}}
 # }}}
+
